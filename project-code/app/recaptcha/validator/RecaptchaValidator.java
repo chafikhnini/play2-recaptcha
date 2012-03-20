@@ -6,6 +6,8 @@ import java.util.concurrent.Callable;
 
 import javax.validation.ConstraintValidator;
 
+import net.tanesha.recaptcha.ReCaptchaImpl;
+import net.tanesha.recaptcha.ReCaptchaResponse;
 import play.Logger;
 import play.Play;
 import play.api.libs.Crypto;
@@ -57,62 +59,30 @@ public class RecaptchaValidator extends
 		return new RecaptchaValidator();
 	}
 
-	public static Promise<Boolean> checkAnswer(final String remoteAddr, final String challenge, final String uresponse) {
-		
-		
-		return		Akka.future(
-				  new Callable<Boolean>() {
-				    public Boolean call() {
-				    	ReCaptchaImpl reCaptcha = new ReCaptchaImpl();
-						String privatekey = Play.application().configuration().getString(Constants.PRIVATE_KEY );
-						if (privatekey == null || privatekey.trim().length() == 0 ) {
-							String msg = "In application.conf, please set property "+Constants.PRIVATE_KEY+" to your site recapcha private key";
-							Logger.error(msg);
-							return Boolean.FALSE;
-						}
-							
-						reCaptcha.setPrivateKey(privatekey);
+	public static Promise<Boolean> checkAnswer(final String remoteAddr,
+			final String challenge, final String uresponse) {
 
-						ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(remoteAddr, challenge, uresponse);
-						return new Boolean(reCaptchaResponse.isValid());
-				    }
-				  }
-		
-		
-	
-		
-	}
-
-	public static Boolean checkAnswer() {
-		return async(future(new Callable<Boolean>() {
+		return Akka.future(new Callable<Boolean>() {
 			public Boolean call() {
+				ReCaptchaImpl reCaptcha = new ReCaptchaImpl();
+				String privatekey = Play.application().configuration()
+						.getString(Constants.PRIVATE_KEY);
+				if (privatekey == null || privatekey.trim().length() == 0) {
+					String msg = "In application.conf, please set property "
+							+ Constants.PRIVATE_KEY
+							+ " to your site recapcha private key";
+					Logger.error(msg);
+					return Boolean.FALSE;
+				}
+
+				reCaptcha.setPrivateKey(privatekey);
+
 				ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(
 						remoteAddr, challenge, uresponse);
-				return longComputation();
+				return new Boolean(reCaptchaResponse.isValid());
 			}
-		}).map(new Function<Integer, Result>() {
-			public Result apply(Integer i) {
-				return ok("Got " + i);
-			}
-		}));
-	}
+		});
 
-	public static boolean checkAnswer(Request request, Params params) {
-
-		ReCaptchaImpl reCaptcha = new ReCaptchaImpl();
-		String privatekey = Play.configuration.getProperty(
-				"ugot.recaptcha.privateKey", YOUR_RECAPTCHA_PRIVATE_KEY);
-		if (privatekey == null || privatekey.trim().length() == 0
-				|| YOUR_RECAPTCHA_PRIVATE_KEY.equals(privatekey))
-			return false;
-
-		reCaptcha.setPrivateKey(privatekey);
-		String challenge = params.get("recaptcha_challenge_field");
-		String uresponse = params.get("recaptcha_response_field");
-
-		ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(remoteAddr,
-				challenge, uresponse);
-		return reCaptchaResponse.isValid();
 	}
 
 }
