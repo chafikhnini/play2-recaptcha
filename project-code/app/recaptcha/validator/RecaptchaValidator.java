@@ -1,5 +1,6 @@
 package recaptcha.validator;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -11,6 +12,7 @@ import play.Logger;
 import play.Play;
 import play.libs.Akka;
 import play.libs.F.Promise;
+import play.mvc.Http.Request;
 
 /**
  * This class defined a new Play validator
@@ -35,16 +37,46 @@ public class RecaptchaValidator extends play.data.validation.Constraints.Validat
 	 */
 	public boolean isValid(Object obj) {
 
-		Map<String, Object> args = play.mvc.Http.Context.current().request().;
+		Request request = play.mvc.Http.Context.current().request();
 
-		String challenge = (String) args.get("recaptcha_challenge_field");
-		String uresponse = (String) args.get("recaptcha_response_field");
+		Map<String, String> data = requestData(request);
+
+		String challenge = data.get("recaptcha_challenge_field");
+		String uresponse = data.get("recaptcha_response_field");
 		play.mvc.Http.Context.current();
 
-		String remoteAddr = play.mvc.Http.Context.current().request().host();
+		String remoteAddr = request.host();
 
 		Boolean result = checkAnswer(remoteAddr, challenge, uresponse).get();
 		return result.booleanValue();
+	}
+
+	private Map<String, String> requestData(Request request) {
+
+		Map<String, String[]> urlFormEncoded = new HashMap<String, String[]>();
+		if (request.body().asFormUrlEncoded() != null) {
+			urlFormEncoded = request.body().asFormUrlEncoded();
+		}
+
+		Map<String, String[]> queryString = request.queryString();
+
+		Map<String, String> data = new HashMap<String, String>();
+
+		for (String key : urlFormEncoded.keySet()) {
+			String[] value = urlFormEncoded.get(key);
+			if (value.length > 0) {
+				data.put(key, value[0]);
+			}
+		}
+
+		for (String key : queryString.keySet()) {
+			String[] value = queryString.get(key);
+			if (value.length > 0) {
+				data.put(key, value[0]);
+			}
+		}
+
+		return data;
 	}
 
 	/**
