@@ -1,7 +1,6 @@
 package recaptcha.validator;
 
-import static play.libs.Akka.future;
-
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 import javax.validation.ConstraintValidator;
@@ -10,22 +9,15 @@ import net.tanesha.recaptcha.ReCaptchaImpl;
 import net.tanesha.recaptcha.ReCaptchaResponse;
 import play.Logger;
 import play.Play;
-import play.api.libs.Crypto;
-import play.api.mvc.Request;
 import play.libs.Akka;
-import play.libs.F.Function;
 import play.libs.F.Promise;
-import play.mvc.Http.Session;
-import play.mvc.Result;
-import play.templates.ScalaTemplateCompiler.Params;
 
 /**
  * This class defined a new Play validator
  * 
  * @author orefalo
  */
-public class RecaptchaValidator extends
-		play.data.validation.Constraints.Validator<Object> implements
+public class RecaptchaValidator extends play.data.validation.Constraints.Validator<Object> implements
 		ConstraintValidator<Recaptcha, Object> {
 
 	/* Default error message */
@@ -41,15 +33,18 @@ public class RecaptchaValidator extends
 	/**
 	 * The validation itself
 	 */
-	public boolean isValid(Object uuid) {
+	public boolean isValid(Object obj) {
 
-		Session session = play.mvc.Http.Context.current().session();
+		Map<String, Object> args = play.mvc.Http.Context.current().request().;
 
-		if (atoken == null || uuid == null)
-			return false;
+		String challenge = (String) args.get("recaptcha_challenge_field");
+		String uresponse = (String) args.get("recaptcha_response_field");
+		play.mvc.Http.Context.current();
 
-		String sign = Crypto.sign(uuid.toString());
-		return atoken.equals(sign);
+		String remoteAddr = play.mvc.Http.Context.current().request().host();
+
+		Boolean result = checkAnswer(remoteAddr, challenge, uresponse).get();
+		return result.booleanValue();
 	}
 
 	/**
@@ -59,17 +54,14 @@ public class RecaptchaValidator extends
 		return new RecaptchaValidator();
 	}
 
-	public static Promise<Boolean> checkAnswer(final String remoteAddr,
-			final String challenge, final String uresponse) {
+	public static Promise<Boolean> checkAnswer(final String remoteAddr, final String challenge, final String uresponse) {
 
 		return Akka.future(new Callable<Boolean>() {
 			public Boolean call() {
 				ReCaptchaImpl reCaptcha = new ReCaptchaImpl();
-				String privatekey = Play.application().configuration()
-						.getString(Constants.PRIVATE_KEY);
+				String privatekey = Play.application().configuration().getString(Constants.PRIVATE_KEY);
 				if (privatekey == null || privatekey.trim().length() == 0) {
-					String msg = "In application.conf, please set property "
-							+ Constants.PRIVATE_KEY
+					String msg = "In application.conf, please set property " + Constants.PRIVATE_KEY
 							+ " to your site recapcha private key";
 					Logger.error(msg);
 					return Boolean.FALSE;
@@ -77,8 +69,7 @@ public class RecaptchaValidator extends
 
 				reCaptcha.setPrivateKey(privatekey);
 
-				ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(
-						remoteAddr, challenge, uresponse);
+				ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(remoteAddr, challenge, uresponse);
 				return new Boolean(reCaptchaResponse.isValid());
 			}
 		});
