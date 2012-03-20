@@ -23,7 +23,7 @@ public class RecaptchaValidator extends play.data.validation.Constraints.Validat
 		ConstraintValidator<Recaptcha, Object> {
 
 	/* Default error message */
-	final static public String message = "error.browserid";
+	final static public String message = "error.recaptcha";
 
 	/**
 	 * Validator init Can be used to initialize the validation based on
@@ -43,14 +43,23 @@ public class RecaptchaValidator extends play.data.validation.Constraints.Validat
 
 		String challenge = data.get("recaptcha_challenge_field");
 		String uresponse = data.get("recaptcha_response_field");
-		play.mvc.Http.Context.current();
+
+		if (challenge == null || challenge.trim().length() == 0 || uresponse == null || uresponse.trim().length() == 0)
+			return false;
 
 		String remoteAddr = request.host();
 
+		// talk to http://www.google.com/recaptcha
 		Boolean result = checkAnswer(remoteAddr, challenge, uresponse).get();
 		return result.booleanValue();
 	}
 
+	/**
+	 * Reads the request parameters, there is no methods in Play2 as of now...
+	 * 
+	 * @param request
+	 * @return a map with the request parameters
+	 */
 	private Map<String, String> requestData(Request request) {
 
 		Map<String, String[]> urlFormEncoded = new HashMap<String, String[]>();
