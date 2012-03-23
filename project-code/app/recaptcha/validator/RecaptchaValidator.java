@@ -1,5 +1,6 @@
 package recaptcha.validator;
 
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -11,7 +12,8 @@ import net.tanesha.recaptcha.ReCaptchaResponse;
 import play.Logger;
 import play.Play;
 import play.libs.Akka;
-import play.libs.F.Promise;
+import play.libs.F.*;
+import static play.libs.F.*;
 import play.mvc.Http.Request;
 
 /**
@@ -115,6 +117,11 @@ public class RecaptchaValidator extends play.data.validation.Constraints.Validat
 			}
 		});
 
+	}
+
+	@Override
+	public Tuple<String, Object[]> getErrorMessageKey() {
+		return Tuple(message, null);
 	}
 
 }
